@@ -10,9 +10,9 @@ st.title("Prediction Application")
 # Mount Google Drive to access the files
 drive.mount('/content/drive', force_remount=True) # Force remount to ensure access
 
-encoder_file_path = '/content/drive/MyDrive/ANALITICA PREDICTIVA/CLASE 4/onehot_encoder.joblib'
-scaler_file_path = '/content/drive/MyDrive/ANALITICA PREDICTIVA/CLASE 4/minmax_scaler.joblib'
-model_file_path = '/content/drive/MyDrive/ANALITICA PREDICTIVA/CLASE 4/logistic_regression_best_model.joblib'
+encoder_file_path = 'onehot_encoder.joblib'
+scaler_file_path = 'minmax_scaler.joblib'
+model_file_path = 'logistic_regression_best_model.joblib'
 
 
 try:
@@ -149,4 +149,5 @@ if st.button("Predict"):
              st.write("Model expected features:", best_model.feature_names_in_.tolist())
     except Exception as e:
         st.error(f"An error occurred during prediction: {e}")
+
 
