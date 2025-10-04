@@ -5,47 +5,124 @@ import os
 
 st.title("Prediction Application")
 
-# File uploaders
-uploaded_data_file = st.file_uploader("Upload your Excel data file", type=['xlsx'])
-uploaded_encoder_file = st.file_uploader("Upload the onehot_encoder.joblib file", type=['joblib'])
-uploaded_scaler_file = st.file_uploader("Upload the minmax_scaler.pkl file", type=['pkl'])
-uploaded_model_file = st.file_uploader("Upload the logistic_regression_best_model.joblib file", type=['joblib'])
+# Assume onehot_encoder, scaler, and best_model are already loaded in the environment
+# If not, you would need to load them here, but the request is to use them directly.
+# Example:
+# try:
+#     onehot_encoder = joblib.load('onehot_encoder.joblib')
+#     scaler = joblib.load('minmax_scaler.pkl')
+#     best_model = joblib.load('logistic_regression_best_model.joblib')
+# except FileNotFoundError:
+#     st.error("Preprocessor or model files not found. Please ensure they are in the correct directory.")
+#     st.stop() # Stop the app if files are not found
 
-data_df = None
-onehot_encoder = None
-scaler = None
-best_model = None
 
-if uploaded_data_file is not None:
+# Input fields for user
+felder_input = st.selectbox("Select Felder:", ['activo', 'visual', 'equilibrio', 'intuitivo', 'reflexivo', 'secuencial', 'sensorial', 'verbal']) # Add all possible 'Felder' categories
+examen_admision_input = st.number_input("Enter Examen de admisión Universidad:", min_value=0.0, max_value=10.0, step=0.01) # Adjust max_value and step as needed
+
+# Create a DataFrame from the user inputs
+input_data = pd.DataFrame({
+    'Felder': [felder_input],
+    'Examen_admisión_Universidad': [examen_admision_input]
+})
+
+# Ensure 'Felder' is treated as string for encoding
+input_data['Felder'] = input_data['Felder'].astype(str)
+
+# --- Preprocessing Steps ---
+
+# Apply the one-hot encoder
+try:
+    felder_data_input = input_data[['Felder']]
+    encoded_felder_input = onehot_encoder.transform(felder_data_input)
+
+    if hasattr(onehot_encoder, 'get_feature_names_out'):
+        encoded_felder_df_input = pd.DataFrame(encoded_felder_input, columns=onehot_encoder.get_feature_names_out(['Felder']))
+    else:
+         try:
+            feature_names = onehot_encoder.categories_[0]
+            encoded_felder_df_input = pd.DataFrame(encoded_felder_input, columns=[f'Felder_{name}' for name in feature_names])
+         except:
+            # Fallback if feature names cannot be retrieved
+            encoded_felder_df_input = pd.DataFrame(encoded_felder_input, columns=[f'Felder_{i}' for i in range(encoded_felder_input.shape[1])])
+
+    st.write("Felder encoded successfully.")
+
+except NameError:
+    st.error("One-hot encoder not found. Please ensure 'onehot_encoder' is loaded in the environment.")
+    st.stop()
+except Exception as e:
+    st.error(f"Error applying one-hot encoder: {e}")
+    st.stop()
+
+
+# Select the numeric columns for scaling
+numeric_columns_input = input_data.select_dtypes(include=['number']).columns.tolist()
+
+scaled_df_input = pd.DataFrame() # Initialize an empty DataFrame for scaled data
+
+if numeric_columns_input:
+    data_to_scale_input = input_data[numeric_columns_input]
+
+    # Apply the scaler
     try:
-        # Load the second sheet (index 1) of the Excel file
-        data_df = pd.read_excel(uploaded_data_file, sheet_name=1)
-        st.write("Data loaded successfully:")
-        st.dataframe(data_df.head())
-    except Exception as e:
-        st.error(f"Error loading data file: {e}")
+        scaled_data_input = scaler.transform(data_to_scale_input)
+        scaled_df_input = pd.DataFrame(scaled_data_input, columns=numeric_columns_input)
+        scaled_df_input.columns = [f'{col}_scaled' for col in scaled_df_input.columns] # Rename to match expected
 
-if uploaded_encoder_file is not None:
+        st.write("Numeric data scaled successfully.")
+
+    except NameError:
+        st.error("Scaler not found. Please ensure 'scaler' is loaded in the environment.")
+        st.stop()
+    except Exception as e:
+        st.error(f"Error applying scaler: {e}")
+        st.stop()
+
+# Combine encoded and scaled data
+X_processed_input = pd.concat([scaled_df_input, encoded_felder_df_input], axis=1)
+
+# --- Prediction ---
+if st.button("Predict"):
     try:
-        onehot_encoder = joblib.load(uploaded_encoder_file)
-        st.write("One-hot encoder loaded successfully.")
-    except Exception as e:
-        st.error(f"Error loading encoder file: {e}")
+        # Ensure column order matches the model's expected feature names
+        if hasattr(best_model, 'feature_names_in_'):
+            expected_features = best_model.feature_names_in_
+            # Add any missing columns from expected features to X_processed_input with 0
+            for col in expected_features:
+                if col not in X_processed_input.columns:
+                    X_processed_input[col] = 0
+            # Reorder columns
+            X_processed_input = X_processed_input[expected_features]
 
-if uploaded_scaler_file is not None:
-    try:
-        scaler = joblib.load(uploaded_scaler_file)
-        st.write("Min-Max scaler loaded successfully.")
-    except Exception as e:
-        st.error(f"Error loading scaler file: {e}")
+        elif hasattr(best_model, 'estimators_'):
+             try:
+                final_estimator = best_model.estimators_[-1]
+                if hasattr(final_estimator, 'feature_names_in_'):
+                    expected_features = final_estimator.feature_names_in_
+                    for col in expected_features:
+                        if col not in X_processed_input.columns:
+                            X_processed_input[col] = 0
+                    X_processed_input = X_processed_input[expected_features]
+             except:
+                 st.warning("Could not access feature names from the model's final estimator. Prediction might fail due to feature mismatch.")
+        else:
+            st.warning("Could not access feature names from the model. Prediction might fail due to feature mismatch.")
 
-if uploaded_model_file is not None:
-    try:
-        best_model = joblib.load(uploaded_model_file)
-        st.write("Logistic Regression Model loaded successfully.")
-    except Exception as e:
-        st.error(f"Error loading model file: {e}")
 
-# Now, you can add the data preprocessing and prediction logic based on whether
-# data_df, onehot_encoder, scaler, and best_model are not None.
-# This will be done in the next steps of the plan.
+        # Make prediction
+        prediction = best_model.predict(X_processed_input)
+
+        st.subheader("Prediction:")
+        st.write(prediction[0]) # Display the first prediction (assuming single input row)
+
+    except NameError:
+        st.error("Model not found. Please ensure 'best_model' is loaded in the environment.")
+    except ValueError as ve:
+        st.error(f"ValueError during prediction: {ve}. This might be due to feature mismatch.")
+        st.write("Processed input columns:", X_processed_input.columns.tolist())
+        if hasattr(best_model, 'feature_names_in_'):
+             st.write("Model expected features:", best_model.feature_names_in_.tolist())
+    except Exception as e:
+        st.error(f"An error occurred during prediction: {e}")
