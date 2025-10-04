@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
-from google.colab import drive
+
 
 st.title("Prediction Application")
 
 # Load the preprocessor and model files
 # Mount Google Drive to access the files
-drive.mount('/content/drive', force_remount=True) # Force remount to ensure access
+
 
 encoder_file_path = 'onehot_encoder.joblib'
 scaler_file_path = 'minmax_scaler.joblib'
@@ -149,5 +149,6 @@ if st.button("Predict"):
              st.write("Model expected features:", best_model.feature_names_in_.tolist())
     except Exception as e:
         st.error(f"An error occurred during prediction: {e}")
+
 
 
