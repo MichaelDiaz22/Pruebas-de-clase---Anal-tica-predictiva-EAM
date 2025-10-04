@@ -2,19 +2,48 @@ import streamlit as st
 import pandas as pd
 import joblib
 import os
+from google.colab import drive
 
 st.title("Prediction Application")
 
-# Assume onehot_encoder, scaler, and best_model are already loaded in the environment
-# If not, you would need to load them here, but the request is to use them directly.
-# Example:
-# try:
-#     onehot_encoder = joblib.load('onehot_encoder.joblib')
-#     scaler = joblib.load('minmax_scaler.pkl')
-#     best_model = joblib.load('logistic_regression_best_model.joblib')
-# except FileNotFoundError:
-#     st.error("Preprocessor or model files not found. Please ensure they are in the correct directory.")
-#     st.stop() # Stop the app if files are not found
+# Load the preprocessor and model files
+# Mount Google Drive to access the files
+drive.mount('/content/drive', force_remount=True) # Force remount to ensure access
+
+encoder_file_path = '/content/drive/MyDrive/ANALITICA PREDICTIVA/CLASE 4/onehot_encoder.joblib'
+scaler_file_path = '/content/drive/MyDrive/ANALITICA PREDICTIVA/CLASE 4/minmax_scaler.joblib'
+model_file_path = '/content/drive/MyDrive/ANALITICA PREDICTIVA/CLASE 4/logistic_regression_best_model.joblib'
+
+
+try:
+    onehot_encoder = joblib.load(encoder_file_path)
+    st.write("One-hot encoder loaded successfully.")
+except FileNotFoundError:
+    st.error(f"Error: onehot_encoder.joblib not found at {encoder_file_path}. Please check the file path in your Google Drive.")
+    st.stop() # Stop the app if file is not found
+except Exception as e:
+    st.error(f"Error loading one-hot encoder: {e}")
+    st.stop()
+
+try:
+    scaler = joblib.load(scaler_file_path)
+    st.write("Min-Max scaler loaded successfully.")
+except FileNotFoundError:
+    st.error(f"Error: minmax_scaler.joblib not found at {scaler_file_path}. Please check the file path in your Google Drive.")
+    st.stop() # Stop the app if file is not found
+except Exception as e:
+    st.error(f"Error loading scaler: {e}")
+    st.stop()
+
+try:
+    best_model = joblib.load(model_file_path)
+    st.write("Logistic Regression Model loaded successfully.")
+except FileNotFoundError:
+    st.error(f"Error: logistic_regression_best_model.joblib not found at {model_file_path}. Please check the file path in your Google Drive.")
+    st.stop() # Stop the app if file is not found
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    st.stop()
 
 
 # Input fields for user
@@ -49,9 +78,6 @@ try:
 
     st.write("Felder encoded successfully.")
 
-except NameError:
-    st.error("One-hot encoder not found. Please ensure 'onehot_encoder' is loaded in the environment.")
-    st.stop()
 except Exception as e:
     st.error(f"Error applying one-hot encoder: {e}")
     st.stop()
@@ -73,9 +99,6 @@ if numeric_columns_input:
 
         st.write("Numeric data scaled successfully.")
 
-    except NameError:
-        st.error("Scaler not found. Please ensure 'scaler' is loaded in the environment.")
-        st.stop()
     except Exception as e:
         st.error(f"Error applying scaler: {e}")
         st.stop()
@@ -117,8 +140,6 @@ if st.button("Predict"):
         st.subheader("Prediction:")
         st.write(prediction[0]) # Display the first prediction (assuming single input row)
 
-    except NameError:
-        st.error("Model not found. Please ensure 'best_model' is loaded in the environment.")
     except ValueError as ve:
         st.error(f"ValueError during prediction: {ve}. This might be due to feature mismatch.")
         st.write("Processed input columns:", X_processed_input.columns.tolist())
